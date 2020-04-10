@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang = "en">
+  <head>
+    <meta charset="UTF-8" />
+    <script src="https://unpkg.com/react@16/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@16/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+  </head>
+  <body>
+
+    <div id="main"></div>
+
+
+
+  </body>
+
+  <script type="text/babel">
+
+/****************************************/
+    const timeToGo = 3;
+    const timeToRest = 3;
+    const goIsSec = true;
+    const restIsSec = true;
+    const soundFile = "bowmp.wav"
+    //var soundFile = "shake-and-bake.wav";
+/****************************************/
+
+
+    class Timer extends React.Component {
+      constructor(props) {
+        super(props);
+
+        this.state = {
+          timeLeft: 0,
+          timeToDisplay: "0:00",
+          phase: "stopped",
+          sound: new Audio(soundFile)
+        }
+      }
+
+      getTime = (which) => {
+        if (which == "go"){
+          //console.log("retrieving GO time");
+          return this.refs.go.checkState();
+        }
+        else{
+          //console.log("retrieving REST time");
+          return this.refs.rest.checkState();
+        }
+      }
+
+      buttonPressed = () => {
+          if(this.state.phase == "stopped"){
+            this.start();
+          }
+          else{
+            this.stop();
+          }
+      }
+
+      start = () => {
+        this.setState({phase: "go"});
+        this.setState({goTime: this.getTime("go")}, () => {this.runFor(this.state.goTime)});
+        this.setState({restTime: this.getTime("rest")});
+      }
+
+      stop = () => {
+        clearInterval(this.timerID);
+        this.setState({phase: "stopped"});
+      }
+
+      runFor = (seconds) => {
+        //console.log("runFor "+seconds+" seconds");
+        this.setState({timeLeft: seconds});
+        this.updateTime(seconds);
+        this.timerID = setInterval( () => this.tick(seconds),1000)
+      }
+
+      tick = () => {
+        let seconds = this.state.timeLeft;
+        //console.log("tick "+seconds);
+        if (seconds <= 0){
+          this.switchPhase();
+        }
+        else {
+          this.updateTime(seconds-1)
+        }
+      }
+
+      updateTime = (seconds) => {
+        this.setState({timeLeft: seconds});
+        let mins = Math.floor(seconds/60)
+        let secs = ("0" + seconds%60).slice(-2);
+        this.setState({timeToDisplay: (mins+":"+secs)});
+
+      }
+
+      switchPhase = () => {
+        //console.log("switch from " +this.state.phase);
+
+        clearInterval(this.timerID);
+        this.playSound();
+        if (this.state.phase == "go"){
+          this.setState({phase: "rest"}, () => {this.runFor(this.state.restTime)});
+        }
+        else {
+          this.setState({phase: "go"}, () => {this.runFor(this.state.goTime)});
+        }
+
+      }
+
+      playSound = () => {
+        //console.log("play sound");
+        this.state.sound.play();
+      }
+
+      render() {
+
+        return (
+          <div className={this.state.phase}>
+            <p>Timer</p>
+            <Interval ref="go" label={'GO'} num={timeToGo} isSec={goIsSec} />
+            <Interval ref="rest" label={'REST'} num={timeToRest} isSec={restIsSec} />
+            <div>
+              <button type="button" onClick={this.buttonPressed}>{(this.state.phase == "stopped") ? "Start" : "Stop"}</button>
+              <div className="timeDisplay" >{this.state.timeToDisplay}</div>
+            </div>
+          </div>
+        )
+      }
+    }
+
+    class Interval extends React.Component {
+      constructor(props) {
+        super(props);
+
+        this.state = {
+          num: props.num,
+          isSec: props.isSec,
+          seconds: this.calculateSeconds(props.num,props.isSec)
+        }
+      }
+
+      updateNum = (newVal) => {
+        //console.log("updating number")
+        this.setState({num: Number(newVal) }, () => {this.checkState()});
+      }
+
+      updateIsSec = (newVal) => {
+        //console.log("updating isSec")
+        this.setState({isSec: newVal}, () => {this.checkState()});
+      }
+
+      returnSeconds = () => {
+        //console.log("calculating seconds")
+        let timeInSeconds = this.calculateSeconds(this.state.num,this.state.isSec)
+        return timeInSeconds;
+      }
+
+      calculateSeconds = (num, isSec) => {
+        return isSec ? num : num*60;
+      }
+
+      checkState = () => {
+        let time = this.returnSeconds();
+        //console.log("seconds: "+time);
+        return time;
+      }
+
+      render() {
+        return (
+          <div>
+            <tr>
+              <td className='labelCell'>{this.props.label}</td>
+              <td className='numberCell'><input type="number" defaultValue={this.props.num} onChange={e => this.updateNum(e.target.value)}/></td>
+              <td className='buttonCell'><button type="button" className={this.state.isSec ? 'inactive-button' : 'active-button'} onClick={e => this.updateIsSec(false)}>Minutes</button></td>
+              <td className='buttonCell'><button type="button" className={this.state.isSec ? 'active-button' : 'inactive-button'} onClick={e => this.updateIsSec(true)}>Seconds</button></td>
+
+            </tr>
+          </div>
+        )
+
+      }
+
+    }
+
+    ReactDOM.render(
+      <div id='background'>
+        <Timer />
+      </div>,
+      document.getElementById("main")
+    );
+
+    //<button type="button" onClick={e => this.checkState()}>Check State</button>
+  </script>
+
+  <style>
+    body {
+      background-color: black;
+    }
+
+    .full-size {
+      width: 500px;
+      height: 250px;
+    }
+    .stopped {
+      background-color: #FFE485;
+    }
+    .go {
+      background-color: green;
+    }
+    .rest {
+      background-color: #8B0000;
+    }
+
+    .timeDisplay {
+      font-size: 200px;
+    }
+
+    .active-button {
+      color: black;
+      background-color: #DCDAD1;
+    }
+
+    .inactive-button {
+      color: gray;
+      background-color: #DCDAD1;
+    }
+
+    .labelCell {
+      width: 38px;
+    }
+    .numberCell {
+      width: 60px;
+    }
+    .buttonCell {
+      width: 75px;
+    }
+
+    div {
+      margin: 15px;
+    }
+
+
+    input {
+      margin-left: 10px;
+      margin-right: 10px;
+      width: 50px;
+    }
+
+    </style>
+
+</html>
